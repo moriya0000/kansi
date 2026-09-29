@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Sound Board</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+
+      font-family:
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+      color: #fff;
+
+      background:
+        radial-gradient(circle at top left, #3b2b75, transparent 35%),
+        radial-gradient(circle at bottom right, #163b67, transparent 35%),
+        #0d1117;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      padding: 30px;
+    }
+
+    .container {
+      width: min(900px, 100%);
+    }
+
+    /* ------------------------------
+       ヘッダー
+    ------------------------------ */
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .header h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      letter-spacing: 1px;
+    }
+
+    .header p {
+      margin: 0;
+      color: #9ca3af;
+    }
+
+    /* ------------------------------
+       サウンドボード
+    ------------------------------ */
+
+    .sound-board {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+    }
+
+    .sound-button {
+      position: relative;
+
+      min-height: 150px;
+
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+
+      background: rgba(255,255,255,0.07);
+      backdrop-filter: blur(12px);
+
+      color: white;
+      cursor: pointer;
+
+      transition:
+        transform 0.15s ease,
+        background 0.15s ease,
+        box-shadow 0.15s ease;
+
+      overflow: hidden;
+    }
+
+    .sound-button:hover {
+      transform: translateY(-4px);
+
+      background: rgba(255,255,255,0.13);
+
+      box-shadow:
+        0 12px 30px rgba(0,0,0,0.3);
+    }
+
+    .sound-button:active {
+      transform: scale(0.96);
+    }
+
+    /* 再生中 */
+
+    .sound-button.playing {
+      background:
+        linear-gradient(
+          135deg,
+          rgba(99,102,241,0.55),
+          rgba(168,85,247,0.45)
+        );
+
+      box-shadow:
+        0 0 0 2px rgba(129,140,248,0.6),
+        0 0 35px rgba(99,102,241,0.4);
+    }
+
+    .sound-button.playing::after {
+      content: "";
+
+      position: absolute;
+
+      left: 0;
+      bottom: 0;
+
+      width: 100%;
+      height: 4px;
+
+      background: #818cf8;
+
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from {
+        opacity: 0.4;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    .icon {
+      display: block;
+
+      font-size: 38px;
+
+      margin-bottom: 12px;
+    }
+
+    .label {
+      display: block;
+
+      font-size: 30px;
+      font-weight: 600;
+    }
+
+    .number {
+      position: absolute;
+
+      top: 12px;
+      right: 14px;
+
+      font-size: 12px;
+
+      color: #9ca3af;
+    }
+
+    /* ------------------------------
+       設定パネル
+    ------------------------------ */
+
+    .control-panel {
+      margin-top: 28px;
+
+      padding: 24px;
+
+      border-radius: 20px;
+
+      border: 1px solid rgba(255,255,255,0.1);
+
+      background: rgba(255,255,255,0.06);
+
+      backdrop-filter: blur(12px);
+    }
+
+    .control-title {
+      display: flex;
+
+      justify-content: space-between;
+      align-items: center;
+
+      margin-bottom: 16px;
+    }
+
+    .control-title strong {
+      font-size: 16px;
+    }
+
+    #delayValue {
+      color: #a5b4fc;
+      font-weight: 700;
+      font-size: 18px;
+    }
+
+    /* スライダー */
+
+    #delaySlider {
+      width: 100%;
+
+      appearance: none;
+
+      height: 6px;
+
+      border-radius: 10px;
+
+      background: #374151;
+
+      outline: none;
+
+      cursor: pointer;
+    }
+
+    #delaySlider::-webkit-slider-thumb {
+      appearance: none;
+
+      width: 22px;
+      height: 22px;
+
+      border-radius: 50%;
+
+      background: #818cf8;
+
+      border: 3px solid #fff;
+
+      box-shadow:
+        0 0 15px rgba(129,140,248,0.6);
+
+      cursor: pointer;
+    }
+
+    #delaySlider::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+
+      border-radius: 50%;
+
+      background: #818cf8;
+
+      border: 3px solid #fff;
+
+      cursor: pointer;
+    }
+
+    .slider-labels {
+      display: flex;
+
+      justify-content: space-between;
+
+      margin-top: 8px;
+
+      color: #6b7280;
+
+      font-size: 12px;
+    }
+
+    /* ------------------------------
+       ステータス
+    ------------------------------ */
+
+    .status {
+      margin-top: 18px;
+
+      text-align: center;
+
+      color: #9ca3af;
+
+      font-size: 14px;
+    }
+
+    .status span {
+      color: #a5b4fc;
+
+      font-weight: 600;
+    }
+
+    /* ------------------------------
+       スマホ対応
+    ------------------------------ */
+
+    @media (max-width: 700px) {
+
+      .sound-board {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .sound-button {
+        min-height: 130px;
+      }
+
+      .header h1 {
+        font-size: 26px;
+      }
+    }
+
+    @media (max-width: 400px) {
+
+      body {
+        padding: 18px;
+      }
+
+      .sound-board {
+        gap: 12px;
+      }
+
+      .sound-button {
+        min-height: 120px;
+        border-radius: 16px;
+      }
+
+      .control-panel {
+        padding: 18px;
+      }
+    }
+
+  </style>
+</head>
+
+
+<body>
+
+  <main class="container">
+
+    <!-- ヘッダー -->
+
+    <header class="header">
+
+      <h1>多客時放送システム（仮）</h1>
+
+      <p>
+        ボタンを押すと繰り返し再生します
+      </p>
+
+    </header>
+
+
+    <!-- 8個のボタン -->
+
+    <section class="sound-board">
+
+      <button
+        class="sound-button"
+        data-sound="audio/1.MP3">
+
+        <span class="label">
+          降車時
+        </span>
+
+      </button>
+
+
+      <button
+        class="sound-button"
+        data-sound="audio/2.MP3">
+
+        <span class="label">
+          発車時
+        </span>
+
+      </button>
+
+
+      <button
+        class="sound-button"
+        data-sound="audio/3.MP3">
+
+        <span class="label">
+          待機時
+        </span>
+
+      </button>
+
+
+      <button
+        class="sound-button"
+        data-sound="audio/4.MP3">
+
+        <span class="label">
+          接近時
+        </span>
+
+      </button>
+
+
+      <button
+        class="sound-button"
+        data-sound="audio/5.MP3">
+
+        <span class="label">
+          乗車時
+        </span>
+
+      </button>
+
+
+      <button
+        class="sound-button"
+        data-sound="audio/6.MP3">
+
+        <span class="label">
+          閉扉時
+        </span>
+
+      </button>
+
+
+      <button
+        class="sound-button"
+        data-sound="audio/7.MP3">
+
+        <span class="label">
+          整列乗車
+        </span>
+
+      </button>
+
+
+      <button
+        class="sound-button"
+        data-sound="audio/8.MP3">
+
+        <span class="label">
+          構内踏切
+        </span>
+
+      </button>
+
+    </section>
+
+
+    <!-- 繰り返し間隔 -->
+
+    <section class="control-panel">
+
+      <div class="control-title">
+
+        <strong>
+          ⏱ 繰り返しまでの待ち時間
+        </strong>
+
+        <span id="delayValue">
+          0秒
+        </span>
+
+      </div>
+
+
+      <input
+        type="range"
+        id="delaySlider"
+        min="0"
+        max="30"
+        step="1"
+        value="0"
+      >
+
+
+      <div class="slider-labels">
+
+        <span>0秒</span>
+
+        <span>10秒</span>
+
+        <span>20秒</span>
+
+        <span>30秒</span>
+
+      </div>
+
+    </section>
+
+
+    <!-- 状態表示 -->
+
+    <div class="status">
+
+      再生中：
+      <span id="statusText">
+        なし
+      </span>
+
+    </div>
+
+  </main>
+
+
+  <script>
+
+    const buttons =
+      document.querySelectorAll(".sound-button");
+
+    const slider =
+      document.getElementById("delaySlider");
+
+    const delayValue =
+      document.getElementById("delayValue");
+
+    const statusText =
+      document.getElementById("statusText");
+
+
+    let currentAudio = null;
+
+    let currentButton = null;
+
+    let loopTimer = null;
+
+
+    /* --------------------------------
+       スライダー
+    -------------------------------- */
+
+    slider.addEventListener("input", () => {
+
+      delayValue.textContent =
+        slider.value + "秒";
+
+    });
+
+
+    /* --------------------------------
+       音声を停止
+    -------------------------------- */
+
+    function stopSound() {
+
+      // タイマーを停止
+      if (loopTimer) {
+
+        clearTimeout(loopTimer);
+
+        loopTimer = null;
+
+      }
+
+
+      // 音声を停止
+      if (currentAudio) {
+
+        currentAudio.pause();
+
+        currentAudio.currentTime = 0;
+
+        currentAudio = null;
+
+      }
+
+
+      // ボタンの状態を解除
+      if (currentButton) {
+
+        currentButton.classList.remove("playing");
+
+        currentButton = null;
+
+      }
+
+
+      statusText.textContent = "なし";
+
+    }
+
+
+    /* --------------------------------
+       音声を再生
+    -------------------------------- */
+
+    function playLoop(button) {
+
+      const soundFile =
+        button.dataset.sound;
+
+
+      const audio =
+        new Audio(soundFile);
+
+
+      currentAudio = audio;
+
+
+      // 再生
+      audio.play();
+
+
+      /* ------------------------------
+         音声終了
+      ------------------------------ */
+
+      audio.addEventListener("ended", () => {
+
+        // 現在のボタンが変わっていたら終了
+        if (currentButton !== button) {
+          return;
+        }
+
+
+        // スライダーから待ち時間を取得
+        const delay =
+          Number(slider.value) * 1000;
+
+
+        /*
+          指定秒数待ってから再生
+        */
+
+        loopTimer = setTimeout(() => {
+
+          if (currentButton === button) {
+
+            playLoop(button);
+
+          }
+
+        }, delay);
+
+      });
+
+    }
+
+
+    /* --------------------------------
+       ボタンクリック
+    -------------------------------- */
+
+    buttons.forEach((button) => {
+
+      button.addEventListener("click", () => {
+
+
+        /*
+          現在このボタンが再生中なら
+          → 停止
+        */
+
+        if (currentButton === button) {
+
+          stopSound();
+
+          return;
+
+        }
+
+
+        /*
+          別の音声が再生中なら
+          → まず停止
+        */
+
+        stopSound();
+
+
+        /*
+          新しいボタンを選択
+        */
+
+        currentButton = button;
+
+        button.classList.add("playing");
+
+
+        statusText.textContent =
+          button.querySelector(".label").textContent;
+
+
+        /*
+          再生開始
+        */
+
+        playLoop(button);
+
+      });
+
+    });
+
+  </script>
+
+</body>
+</html>
