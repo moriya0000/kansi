@@ -3,7 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="shortcut icon" href="https://www.kantetsu.co.jp/cms/wp-content/themes/kr/img/favicon/favicon.ico">
+
+  <link
+    rel="shortcut icon"
+    href="https://www.kantetsu.co.jp/cms/wp-content/themes/kr/img/favicon/favicon.ico"
+  >
+
   <title>多客時放送システム</title>
 
   <style>
@@ -90,6 +95,10 @@
         box-shadow 0.15s ease;
 
       overflow: hidden;
+
+      /* iPad/Safari対策 */
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
 
     .sound-button:hover {
@@ -146,30 +155,11 @@
       }
     }
 
-    .icon {
-      display: block;
-
-      font-size: 38px;
-
-      margin-bottom: 12px;
-    }
-
     .label {
       display: block;
 
       font-size: 30px;
       font-weight: 600;
-    }
-
-    .number {
-      position: absolute;
-
-      top: 12px;
-      right: 14px;
-
-      font-size: 12px;
-
-      color: #9ca3af;
     }
 
     /* ------------------------------
@@ -209,12 +199,15 @@
       font-size: 18px;
     }
 
-    /* スライダー */
+    /* ------------------------------
+       スライダー
+    ------------------------------ */
 
     #delaySlider {
       width: 100%;
 
       appearance: none;
+      -webkit-appearance: none;
 
       height: 6px;
 
@@ -229,6 +222,7 @@
 
     #delaySlider::-webkit-slider-thumb {
       appearance: none;
+      -webkit-appearance: none;
 
       width: 22px;
       height: 22px;
@@ -350,11 +344,12 @@
     </header>
 
 
-    <!-- 8個のボタン -->
+    <!-- サウンドボード -->
 
     <section class="sound-board">
 
       <button
+        type="button"
         class="sound-button"
         data-sound="audio/1.mp3">
 
@@ -366,6 +361,7 @@
 
 
       <button
+        type="button"
         class="sound-button"
         data-sound="audio/2.mp3">
 
@@ -375,8 +371,9 @@
 
       </button>
 
-      
+
       <button
+        type="button"
         class="sound-button"
         data-sound="audio/7.mp3">
 
@@ -385,9 +382,10 @@
         </span>
 
       </button>
-      
-      
+
+
       <button
+        type="button"
         class="sound-button"
         data-sound="audio/8.mp3">
 
@@ -398,8 +396,8 @@
       </button>
 
 
-      
       <button
+        type="button"
         class="sound-button"
         data-sound="audio/3.mp3">
 
@@ -411,6 +409,7 @@
 
 
       <button
+        type="button"
         class="sound-button"
         data-sound="audio/4.mp3">
 
@@ -422,6 +421,7 @@
 
 
       <button
+        type="button"
         class="sound-button"
         data-sound="audio/5.mp3">
 
@@ -433,6 +433,7 @@
 
 
       <button
+        type="button"
         class="sound-button"
         data-sound="audio/6.mp3">
 
@@ -442,9 +443,8 @@
 
       </button>
 
-
-
     </section>
+
 
     <!-- 繰り返し間隔 -->
 
@@ -476,11 +476,8 @@
       <div class="slider-labels">
 
         <span>0秒</span>
-
         <span>10秒</span>
-
         <span>20秒</span>
-
         <span>30秒</span>
 
       </div>
@@ -504,6 +501,10 @@
 
   <script>
 
+    /* =========================================
+       DOM
+    ========================================= */
+
     const buttons =
       document.querySelectorAll(".sound-button");
 
@@ -517,16 +518,38 @@
       document.getElementById("statusText");
 
 
-    let currentAudio = null;
+    /* =========================================
+       音声オブジェクト
+       
+       Audioを1個だけ作成して使い回す
+    ========================================= */
+
+    const audio = new Audio();
+
+    audio.preload = "auto";
+
+    /*
+      iOS Safariでは余計な同時再生を避ける
+    */
+    audio.volume = 1.0;
+
+
+    /* =========================================
+       現在の状態
+    ========================================= */
 
     let currentButton = null;
 
+    let currentSound = null;
+
     let loopTimer = null;
 
+    let isPlayingLoop = false;
 
-    /* --------------------------------
+
+    /* =========================================
        スライダー
-    -------------------------------- */
+    ========================================= */
 
     slider.addEventListener("input", () => {
 
@@ -536,14 +559,13 @@
     });
 
 
-    /* --------------------------------
-       音声を停止
-    -------------------------------- */
+    /* =========================================
+       タイマー停止
+    ========================================= */
 
-    function stopSound() {
+    function clearLoopTimer() {
 
-      // タイマーを停止
-      if (loopTimer) {
+      if (loopTimer !== null) {
 
         clearTimeout(loopTimer);
 
@@ -551,103 +573,228 @@
 
       }
 
+    }
 
-      // 音声を停止
-      if (currentAudio) {
 
-        currentAudio.pause();
+    /* =========================================
+       音声停止
+    ========================================= */
 
-        currentAudio.currentTime = 0;
+    function stopSound() {
 
-        currentAudio = null;
+      /*
+        ループ停止
+      */
+
+      isPlayingLoop = false;
+
+      clearLoopTimer();
+
+
+      /*
+        音声停止
+      */
+
+      audio.pause();
+
+      /*
+        再生位置を最初に戻す
+      */
+
+      try {
+
+        audio.currentTime = 0;
+
+      } catch (error) {
+
+        console.warn(
+          "currentTime reset failed:",
+          error
+        );
 
       }
 
 
-      // ボタンの状態を解除
+      /*
+        状態解除
+      */
+
       if (currentButton) {
 
-        currentButton.classList.remove("playing");
-
-        currentButton = null;
+        currentButton.classList.remove(
+          "playing"
+        );
 
       }
 
+
+      currentButton = null;
+
+      currentSound = null;
 
       statusText.textContent = "なし";
 
     }
 
 
-    /* --------------------------------
+    /* =========================================
        音声を再生
-    -------------------------------- */
+    ========================================= */
 
-    function playLoop(button) {
+    async function playCurrentSound() {
 
-      const soundFile =
-        button.dataset.sound;
+      /*
+        ループが停止されていたら何もしない
+      */
 
-
-      const audio =
-        new Audio(soundFile);
-
-
-      currentAudio = audio;
+      if (!isPlayingLoop) {
+        return;
+      }
 
 
-      // 再生
-      audio.play();
+      /*
+        現在のボタンがなければ終了
+      */
+
+      if (!currentButton) {
+        return;
+      }
 
 
-      /* ------------------------------
-         音声終了
-      ------------------------------ */
+      try {
 
-      audio.addEventListener("ended", () => {
+        /*
+          念のため停止
+        */
 
-        // 現在のボタンが変わっていたら終了
-        if (currentButton !== button) {
-          return;
-        }
-
-
-        // スライダーから待ち時間を取得
-        const delay =
-          Number(slider.value) * 1000;
+        audio.pause();
 
 
         /*
-          指定秒数待ってから再生
+          再生位置を先頭へ
         */
 
-        loopTimer = setTimeout(() => {
+        audio.currentTime = 0;
 
-          if (currentButton === button) {
 
-            playLoop(button);
+        /*
+          再生
+          
+          iOS Safariではplay()がPromiseを返すため、
+          必ずcatchまで処理する
+        */
 
-          }
+        await audio.play();
 
-        }, delay);
+      } catch (error) {
 
-      });
+        console.error(
+          "音声再生エラー:",
+          error
+        );
+
+
+        /*
+          再生に失敗した場合、
+          ループが完全停止しないように
+          少し待って再試行
+        */
+
+        if (isPlayingLoop) {
+
+          clearLoopTimer();
+
+          loopTimer = setTimeout(() => {
+
+            playCurrentSound();
+
+          }, 1000);
+
+        }
+
+      }
 
     }
 
 
-    /* --------------------------------
-       ボタンクリック
-    -------------------------------- */
+    /* =========================================
+       音声終了
+    ========================================= */
+
+    audio.addEventListener("ended", () => {
+
+      /*
+        停止済みなら何もしない
+      */
+
+      if (!isPlayingLoop) {
+        return;
+      }
+
+
+      /*
+        現在のボタンがない場合も終了
+      */
+
+      if (!currentButton) {
+        return;
+      }
+
+
+      /*
+        既存タイマーを念のため解除
+      */
+
+      clearLoopTimer();
+
+
+      /*
+        指定された待ち時間
+      */
+
+      const delay =
+        Number(slider.value) * 1000;
+
+
+      /*
+        待ってから再生
+      */
+
+      loopTimer = setTimeout(() => {
+
+        loopTimer = null;
+
+
+        if (
+          isPlayingLoop &&
+          currentButton
+        ) {
+
+          playCurrentSound();
+
+        }
+
+      }, delay);
+
+    });
+
+
+    /* =========================================
+       ボタン処理
+    ========================================= */
 
     buttons.forEach((button) => {
 
-      button.addEventListener("click", () => {
+      button.addEventListener("click", async () => {
+
+        const soundFile =
+          button.dataset.sound;
 
 
         /*
-          現在このボタンが再生中なら
-          → 停止
+          同じボタンを押した
+          ↓
+          停止
         */
 
         if (currentButton === button) {
@@ -660,35 +807,120 @@
 
 
         /*
-          別の音声が再生中なら
-          → まず停止
+          現在の音声を停止
         */
 
         stopSound();
 
 
         /*
-          新しいボタンを選択
+          新しい音声を選択
         */
 
         currentButton = button;
 
-        button.classList.add("playing");
+        currentSound = soundFile;
 
-
-        statusText.textContent =
-          button.querySelector(".label").textContent;
+        isPlayingLoop = true;
 
 
         /*
-          再生開始
+          UI
         */
 
-        playLoop(button);
+        button.classList.add("playing");
+
+        statusText.textContent =
+          button
+            .querySelector(".label")
+            .textContent
+            .trim();
+
+
+        /*
+          音声ファイルをセット
+        */
+
+        audio.src = soundFile;
+
+        audio.load();
+
+
+        /*
+          重要：
+          iPadではユーザー操作中にplay()する
+          
+          これによりSafariの自動再生制限を
+          回避しやすくする
+        */
+
+        await playCurrentSound();
 
       });
 
     });
+
+
+    /* =========================================
+       ページが非表示になった場合
+       
+       iPad Safariでバックグラウンドへ移動した
+       ときの状態確認
+    ========================================= */
+
+    document.addEventListener(
+      "visibilitychange",
+      () => {
+
+        if (
+          document.visibilityState === "visible" &&
+          isPlayingLoop &&
+          currentButton &&
+          audio.paused
+        ) {
+
+          /*
+            画面復帰時に音声が停止していた場合、
+            ループを再開する
+          */
+
+          clearLoopTimer();
+
+          loopTimer = setTimeout(() => {
+
+            if (
+              isPlayingLoop &&
+              currentButton
+            ) {
+
+              playCurrentSound();
+
+            }
+
+          }, 300);
+
+        }
+
+      }
+    );
+
+
+    /* =========================================
+       ページ終了時
+    ========================================= */
+
+    window.addEventListener(
+      "pagehide",
+      () => {
+
+        isPlayingLoop = false;
+
+        clearLoopTimer();
+
+        audio.pause();
+
+      }
+    );
 
   </script>
 
